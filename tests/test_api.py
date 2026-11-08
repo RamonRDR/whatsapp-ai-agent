@@ -127,6 +127,20 @@ def test_handoff_pauses_and_admin_resumes(client):
     assert send(client, "hours").json()["reply"] is not None
 
 
+def test_operator_can_read_only_with_admin_authorization(client):
+    send(client, "services")
+    headers = {"x-admin-api-key": "unit-test-admin-secret"}
+    handoff_reply = send(client, "HUMAN").json()["reply"]
+    assert "paused" in handoff_reply
+    item = client.get("/admin/handoffs", headers=headers).json()["handoffs"][0]
+    route = "/admin/conversations/" + str(item["conversation_id"])
+    assert client.get(route).status_code == 403
+    result = client.get(route, headers=headers).json()
+    assert result["state"] == "human"
+    assert [msg["direction"] for msg in result["messages"]] == ["in", "out", "in", "out"]
+    assert client.get("/admin/conversations/99999", headers=headers).status_code == 404
+
+
 def test_opt_out_blocks_automation(client):
     assert send(client, "STOP").json()["reply"] is None
     assert send(client, "services").json()["reply"] is None

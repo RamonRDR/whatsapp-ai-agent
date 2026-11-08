@@ -30,7 +30,7 @@ Prueba `services`, `hours`, `availability`, `book consultation YYYY-MM-DD 10:00`
 - Persistencia SQLAlchemy (SQLite o PostgreSQL) y migraciones Alembic.
 - Herramientas `list_services`, `get_service_details`, `get_business_hours`, `get_business_information`, `search_faq` y disponibilidad demostrativa.
 - Motor determinista gratuito; modelo compatible con tool calling opcional y **solo de lectura**.
-- Transferencia humana, opt-out, límite de mensajes por contacto, autenticación simple para las APIs administrativas y registro de herramientas.
+- Transferencia humana, opt-out, límite de mensajes por contacto, autenticación simple para las APIs administrativas y registro de herramientas. El operador autenticado consulta `/admin/conversations/{id}`.
 - Pruebas pytest y GitHub Actions en runners alojados, sin acceso a APIs de pago, más de 20 escenarios de evaluación.
 
 ## Integración opcional y política

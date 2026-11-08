@@ -30,7 +30,7 @@ Exemplos: `services`, `hours`, `availability`, `book consultation AAAA-MM-DD 10:
 - Contatos pseudonimizados, conversas, mensagens, serviços, agendamentos, handoff e auditoria no SQLAlchemy.
 - `list_services`, `get_service_details`, `get_business_hours`, `get_business_information`, `search_faq` e disponibilidade fictícia.
 - Adaptador de LLM compatível com tool calling, limitado a ferramentas de leitura. Modo determinístico sem custos é o padrão.
-- APIs administrativas protegidas por chave; a tela de demonstração só é disponibilizada no modo local.
+- APIs administrativas protegidas por chave; a tela de demonstração só é disponibilizada no modo local. O operador autenticado consulta `/admin/conversations/{id}`.
 - GitHub Actions com pytest, Ruff, migrações, empacotamento e build Docker, sem APIs pagas nem mensagens reais.
 - Mais de 20 cenários fictícios de avaliação em `evals/scenarios.json`.
 

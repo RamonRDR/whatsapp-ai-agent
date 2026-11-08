@@ -255,6 +255,27 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             ]
         }
 
+    @app.get("/admin/conversations/{conversation_id}", dependencies=[Depends(admin)])
+    def operator_conversation(conversation_id: int, session: Session = Depends(db)) -> dict:
+        conv = session.get(Conversation, conversation_id)
+        if conv is None:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+        messages = session.scalars(
+            select(Message)
+            .where(Message.conversation_id == conversation_id)
+            .order_by(Message.id.desc())
+            .limit(60)
+        ).all()
+        emit("operator_conversation_viewed", conversation_id=conversation_id)
+        return {
+            "conversation_id": conversation_id,
+            "state": conv.state,
+            "messages": [
+                {"direction": message.direction, "body": message.body}
+                for message in reversed(messages)
+            ],
+        }
+
     @app.post("/admin/handoffs/{handoff_id}/resume", dependencies=[Depends(admin)])
     def resume(handoff_id: int, session: Session = Depends(db)) -> dict:
         row = session.get(HumanHandoff, handoff_id)
