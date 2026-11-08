@@ -1,12 +1,11 @@
 """HTTP transport: demo, official webhook, authenticated operator endpoints."""
 
+import hashlib
+import hmac
 import json
 import uuid
-import hmac
-import hashlib
-from datetime import timedelta
 from collections.abc import Iterator
-from datetime import datetime
+from datetime import datetime, timedelta
 from importlib.resources import files
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
@@ -279,8 +278,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             ]
         }
 
-    @app.post("/admin/appointments/{appointment_id}/cancellation-approval",
-              dependencies=[Depends(admin)])
+    @app.post(
+        "/admin/appointments/{appointment_id}/cancellation-approval", dependencies=[Depends(admin)]
+    )
     def approve_cancellation(appointment_id: int, session: Session = Depends(db)) -> dict:
         appointment = session.get(AppointmentRequest, appointment_id)
         if appointment is None or appointment.status != "confirmed":
@@ -298,8 +298,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.post("/admin/appointments/{appointment_id}/cancel", dependencies=[Depends(admin)])
     def cancel_appointment(
-        appointment_id: int, x_approval_token: str | None = Header(default=None),
-        session: Session = Depends(db)
+        appointment_id: int,
+        x_approval_token: str | None = Header(default=None),
+        session: Session = Depends(db),
     ) -> dict:
         appointment = session.get(AppointmentRequest, appointment_id)
         if appointment is None or appointment.status != "confirmed":
@@ -307,28 +308,35 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if not x_approval_token or len(x_approval_token) > 100:
             raise HTTPException(status_code=403, detail="Valid cancellation approval required")
         digest = hashlib.sha256(x_approval_token.encode()).hexdigest()
-        approval = session.scalar(select(AdminApproval).where(
-            AdminApproval.appointment_id == appointment_id,
-            AdminApproval.consumed.is_(False),
-            AdminApproval.expires_at > utcnow(),
-            AdminApproval.token_digest == digest,
-        ).order_by(AdminApproval.id.desc()))
+        approval = session.scalar(
+            select(AdminApproval)
+            .where(
+                AdminApproval.appointment_id == appointment_id,
+                AdminApproval.consumed.is_(False),
+                AdminApproval.expires_at > utcnow(),
+                AdminApproval.token_digest == digest,
+            )
+            .order_by(AdminApproval.id.desc())
+        )
         if approval is None or not hmac.compare_digest(approval.token_digest, digest):
             raise HTTPException(status_code=403, detail="Invalid or expired cancellation approval")
         approval.consumed = True
         appointment.status = "cancelled"
-        session.execute(delete(AppointmentSlot).where(
-            AppointmentSlot.appointment_id == appointment.id
-        ))
-        conv = session.scalar(select(Conversation).where(
-            Conversation.contact_id == appointment.contact_id
-        ))
+        session.execute(
+            delete(AppointmentSlot).where(AppointmentSlot.appointment_id == appointment.id)
+        )
+        conv = session.scalar(
+            select(Conversation).where(Conversation.contact_id == appointment.contact_id)
+        )
         if conv is not None:
-            session.add(ToolExecution(
-                conversation_id=conv.id,
-                tool="human_cancel_appointment", details=str(appointment.id),
-                success=True,
-            ))
+            session.add(
+                ToolExecution(
+                    conversation_id=conv.id,
+                    tool="human_cancel_appointment",
+                    details=str(appointment.id),
+                    success=True,
+                )
+            )
         session.commit()
         return {"cancelled": True, "appointment_id": appointment_id}
 
@@ -337,10 +345,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         cutoff = utcnow() - timedelta(days=settings.message_retention_days)
         count = session.execute(delete(Message).where(Message.created_at < cutoff)).rowcount
         session.execute(delete(ToolExecution).where(ToolExecution.created_at < cutoff))
-        session.execute(delete(HumanHandoff).where(
-            HumanHandoff.created_at < cutoff,
-            HumanHandoff.status != "open",
-        ))
+        session.execute(
+            delete(HumanHandoff).where(
+                HumanHandoff.created_at < cutoff,
+                HumanHandoff.status != "open",
+            )
+        )
         session.commit()
         return {
             "purged_messages": count,

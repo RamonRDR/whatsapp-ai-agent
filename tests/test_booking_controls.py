@@ -11,9 +11,14 @@ from whatsapp_ai_agent.models import Message, utcnow
 
 
 def send(client, contact, message):
-    response = client.post("/demo/message", json={
-        "contact": contact, "message": message, "message_id": uuid.uuid4().hex,
-    })
+    response = client.post(
+        "/demo/message",
+        json={
+            "contact": contact,
+            "message": message,
+            "message_id": uuid.uuid4().hex,
+        },
+    )
     assert response.status_code == 200, response.text
     return response.json()
 
@@ -54,15 +59,22 @@ def test_cancel_requires_human_approval_and_cannot_reuse_token(client):
     path = "/admin/appointments/" + str(appointment["id"])
     assert client.post(path + "/cancel", headers=headers).status_code == 403
     token = client.post(path + "/cancellation-approval", headers=headers).json()["approval_token"]
-    assert client.post(path + "/cancel", headers={
-        **headers, "x-approval-token": "bad-token"
-    }).status_code == 403
-    assert client.post(path + "/cancel", headers={
-        **headers, "x-approval-token": token
-    }).json()["cancelled"] is True
-    assert client.post(path + "/cancel", headers={
-        **headers, "x-approval-token": token
-    }).status_code == 404
+    assert (
+        client.post(
+            path + "/cancel", headers={**headers, "x-approval-token": "bad-token"}
+        ).status_code
+        == 403
+    )
+    assert (
+        client.post(path + "/cancel", headers={**headers, "x-approval-token": token}).json()[
+            "cancelled"
+        ]
+        is True
+    )
+    assert (
+        client.post(path + "/cancel", headers={**headers, "x-approval-token": token}).status_code
+        == 404
+    )
     assert "Reply CONFIRM" in send(client, "new", "book consultation " + day + " 10:00")["reply"]
     assert "confirmed" in send(client, "new", "CONFIRM")["reply"]
 
@@ -81,9 +93,9 @@ def test_purge_history_requires_admin_and_respects_retention(client, settings):
         session.execute(update(Message).values(created_at=utcnow() - timedelta(days=45)))
         session.commit()
     assert client.post("/admin/purge-history").status_code == 403
-    result = client.post("/admin/purge-history", headers={
-        "x-admin-api-key": "unit-test-admin-secret"
-    }).json()
+    result = client.post(
+        "/admin/purge-history", headers={"x-admin-api-key": "unit-test-admin-secret"}
+    ).json()
     assert result["purged_messages"] == 2
     assert result["retention_days"] == 30
     assert client.get("/demo/history", params={"contact": "one"}).json()["messages"] == []

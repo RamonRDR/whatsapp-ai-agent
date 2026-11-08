@@ -1,4 +1,3 @@
-
 """Duration locks and human cancellation approvals.
 
 Revision ID: 0002
@@ -21,14 +20,20 @@ def upgrade() -> None:
         op.create_table(
             "appointment_slots",
             sa.Column("slot", sa.String(length=40), primary_key=True),
-            sa.Column("appointment_id", sa.Integer(), sa.ForeignKey("appointments.id"), nullable=False),
+            sa.Column(
+                "appointment_id", sa.Integer(), sa.ForeignKey("appointments.id"), nullable=False
+            ),
         )
-        op.create_index("ix_appointment_slots_appointment_id", "appointment_slots", ["appointment_id"])
+        op.create_index(
+            "ix_appointment_slots_appointment_id", "appointment_slots", ["appointment_id"]
+        )
     if not inspector.has_table("admin_approvals"):
         op.create_table(
             "admin_approvals",
             sa.Column("id", sa.Integer(), primary_key=True),
-            sa.Column("appointment_id", sa.Integer(), sa.ForeignKey("appointments.id"), nullable=False),
+            sa.Column(
+                "appointment_id", sa.Integer(), sa.ForeignKey("appointments.id"), nullable=False
+            ),
             sa.Column("token_digest", sa.String(length=64), nullable=False),
             sa.Column("expires_at", sa.DateTime(), nullable=False),
             sa.Column("consumed", sa.Boolean(), nullable=False),

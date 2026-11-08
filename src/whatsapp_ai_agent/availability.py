@@ -1,4 +1,3 @@
-
 """Fictional appointment availability with unique 30-minute resource locks."""
 
 from datetime import datetime, timedelta
@@ -27,9 +26,11 @@ def valid_slot(slot: str, duration_minutes: int, now: datetime | None = None) ->
     now = now or utcnow()
     end = start + timedelta(minutes=duration_minutes)
     return bool(
-        duration_minutes > 0 and duration_minutes % 30 == 0
+        duration_minutes > 0
+        and duration_minutes % 30 == 0
         and now < start < now + timedelta(days=60)
-        and start.weekday() < 5 and start.hour >= 9
+        and start.weekday() < 5
+        and start.hour >= 9
         and start.minute in {0, 30}
         and end.date() == start.date()
         and end <= start.replace(hour=17, minute=0)

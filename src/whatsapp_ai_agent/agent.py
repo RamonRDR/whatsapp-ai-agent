@@ -6,15 +6,14 @@ Write operations are only performed by deterministic explicit confirmation.
 import json
 import re
 from datetime import datetime, timedelta
+from importlib.resources import files
 from typing import Any
 
 from sqlalchemy import func, select
-from importlib.resources import files
-
-from whatsapp_ai_agent.availability import available_for_date, is_available, slot_units, valid_slot
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from whatsapp_ai_agent.availability import available_for_date, is_available, slot_units, valid_slot
 from whatsapp_ai_agent.catalog import BUSINESS, get_service_details, list_services, search_faq
 from whatsapp_ai_agent.config import Settings
 from whatsapp_ai_agent.llm import LLMAdapter, LLMUnavailable
@@ -55,8 +54,11 @@ class Agent:
         if name == "search_faq" and set(args) == {"query"} and isinstance(args["query"], str):
             return search_faq(args["query"])
 
-        if (name == "get_availability" and set(args) == {"date", "service"}
-                and all(isinstance(value, str) for value in args.values())):
+        if (
+            name == "get_availability"
+            and set(args) == {"date", "service"}
+            and all(isinstance(value, str) for value in args.values())
+        ):
             if len(args["date"]) <= 10 and len(args["service"]) <= 80:
                 return available_for_date(session, args["date"], args["service"])
         raise ValueError("Invalid or unauthorized tool call")
@@ -79,7 +81,6 @@ class Agent:
         session.add(HumanHandoff(conversation_id=conv.id, reason=reason[:200]))
         return "I have requested a human operator. Automated replies are now paused."
 
-
     def _confirm(self, session: Session, conv: Conversation) -> str:
         code, slot = conv.pending_service, conv.pending_slot
         # The pending confirmation is consumed once, regardless of outcome.
@@ -97,8 +98,7 @@ class Agent:
         if not is_available(session, slot, service.duration_minutes):
             return "This slot is no longer available. Please choose another."
         appointment = AppointmentRequest(
-            contact_id=conv.contact_id, service_code=code,
-            slot=slot, status="confirmed"
+            contact_id=conv.contact_id, service_code=code, slot=slot, status="confirmed"
         )
         session.add(appointment)
         session.flush()
@@ -155,13 +155,16 @@ class Agent:
         tools: list[dict] = []
         text = body.strip()
         lower = text.casefold()
-        recent = session.scalar(
-            select(func.count(Message.id)).where(
-                Message.conversation_id == conv.id,
-                Message.direction == "in",
-                Message.created_at >= utcnow() - timedelta(minutes=1),
+        recent = (
+            session.scalar(
+                select(func.count(Message.id)).where(
+                    Message.conversation_id == conv.id,
+                    Message.direction == "in",
+                    Message.created_at >= utcnow() - timedelta(minutes=1),
+                )
             )
-        ) or 0
+            or 0
+        )
         reply: str | None
 
         if is_stale:
@@ -175,7 +178,11 @@ class Agent:
         elif conv.state == "human":
             reply = None
         elif recent >= self.settings.inbound_rate_limit and lower not in {
-            "human", "agent", "operator", "atendimento humano", "humano"
+            "human",
+            "agent",
+            "operator",
+            "atendimento humano",
+            "humano",
         }:
             self._log_tool(session, conv, "rate_limit", "Inbound per-minute limit", False)
             reply = None
@@ -249,9 +256,9 @@ class Agent:
                 messages = [
                     {
                         "role": "system",
-                        "content": files("whatsapp_ai_agent").joinpath(
-                            "prompts/system.txt"
-                        ).read_text("utf-8"),
+                        "content": files("whatsapp_ai_agent")
+                        .joinpath("prompts/system.txt")
+                        .read_text("utf-8"),
                     },
                     *[
                         {
@@ -314,6 +321,12 @@ class Agent:
             session.rollback()
             # Unique constraints prevent both duplicate processing and concurrent double-booking.
             return {"duplicate": True, "reply": None, "tools": [], "state": "conflict"}
-        emit("conversation_processed", channel=channel, conversation_id=conv.id,
-             state=conv.state, tools_count=len(tools), has_reply=bool(reply))
+        emit(
+            "conversation_processed",
+            channel=channel,
+            conversation_id=conv.id,
+            state=conv.state,
+            tools_count=len(tools),
+            has_reply=bool(reply),
+        )
         return {"duplicate": False, "reply": reply, "tools": tools, "state": conv.state}

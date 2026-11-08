@@ -30,8 +30,12 @@ TOOLS = [
         ("get_business_hours", "Read opening hours", {}, []),
         ("get_business_information", "Read business info", {}, []),
         ("search_faq", "Look up a FAQ answer", {"query": {"type": "string"}}, ["query"]),
-        ("get_availability", "List available demo slots for a date and service",
-         {"date": {"type": "string"}, "service": {"type": "string"}}, ["date", "service"]),
+        (
+            "get_availability",
+            "List available demo slots for a date and service",
+            {"date": {"type": "string"}, "service": {"type": "string"}},
+            ["date", "service"],
+        ),
     ]
 ]
 

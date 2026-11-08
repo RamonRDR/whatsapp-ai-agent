@@ -16,10 +16,18 @@ depends_on = None
 
 
 def upgrade() -> None:
-    tables = [table for table in Base.metadata.sorted_tables if table.name not in {"appointment_slots", "admin_approvals"}]
+    tables = [
+        table
+        for table in Base.metadata.sorted_tables
+        if table.name not in {"appointment_slots", "admin_approvals"}
+    ]
     Base.metadata.create_all(bind=op.get_bind(), tables=tables, checkfirst=True)
 
 
 def downgrade() -> None:
-    tables = [table for table in Base.metadata.sorted_tables if table.name not in {"appointment_slots", "admin_approvals"}]
+    tables = [
+        table
+        for table in Base.metadata.sorted_tables
+        if table.name not in {"appointment_slots", "admin_approvals"}
+    ]
     Base.metadata.drop_all(bind=op.get_bind(), tables=tables, checkfirst=True)
