@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>WhatsApp AI Agent | Offline Demo</title>
+  <style>
+    :root {font-family:Inter,system-ui,sans-serif;color:#e6f4f0;background:#0c1817}
+    * {box-sizing:border-box}
+    body {margin:0;display:grid;place-items:center;min-height:100vh;padding:1.2rem}
+    main {width:min(820px,100%);background:#142725;border:1px solid #31534b;border-radius:22px;overflow:hidden}
+    header {padding:1.3rem 1.7rem;background:#193d33;border-bottom:1px solid #31534b}
+    h1 {font-size:1.4rem;margin:.1rem 0}.tag {color:#a2e9c4;font-size:.8rem;letter-spacing:.08em}
+    .warning {color:#f5cb8d;font-size:.85rem;margin-top:.4rem}
+    #chat {height:380px;overflow-y:auto;padding:1.2rem;display:flex;flex-direction:column;gap:.7rem}
+    .msg {padding:.7rem .9rem;border-radius:14px;max-width:85%;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.5}
+    .in {background:#27443d;align-self:flex-end}.out {background:#27312f;align-self:flex-start}
+    .tools {border-top:1px solid #31534b;color:#a6c9c0;padding:.7rem 1rem;font-size:.82rem;min-height:50px}
+    form {display:flex;gap:.5rem;padding:1rem;border-top:1px solid #31534b}
+    input {flex:1;border:1px solid #31534b;border-radius:10px;padding:.8rem;background:#0e1d1a;color:white;min-width:0}
+    button {border:0;border-radius:10px;padding:.8rem 1.15rem;background:#38c99b;color:#081c15;font-weight:700;cursor:pointer}
+    button:disabled {opacity:.55}.tips {padding:0 1rem 1rem;color:#a6c9c0;font-size:.84rem}
+    code {background:#20362e;padding:.15rem .3rem;border-radius:4px}
+  </style>
+</head>
+<body><main>
+  <header><div class="tag">LOCAL • OFFLINE • FICTIONAL DATA</div><h1>WhatsApp AI Agent</h1>
+    <div class="warning">This is a simulator, NOT a live WhatsApp connection. No messages are sent.</div>
+  </header>
+  <section id="chat" aria-live="polite"></section>
+  <div id="tools" class="tools">Tool trace appears here.</div>
+  <form id="form"><input id="message" autocomplete="off" aria-label="Message" maxlength="4096" required
+    placeholder="Ask for services, prices, opening hours..."><button id="send">Send</button></form>
+  <div class="tips">Try <code>services</code>, <code>hours</code>, <code>book consultation 2027-01-11 10:00</code>,
+    <code>CONFIRM</code> or <code>HUMAN</code>.<p>To reset local data, call the authenticated API route <code>POST /demo/reset</code>.</p></div>
+</main>
+<script>
+  const chat = document.getElementById("chat");
+  const trace = document.getElementById("tools");
+  const form = document.getElementById("form");
+  const field = document.getElementById("message");
+  const button = document.getElementById("send");
+  function add(text, direction) {
+    const node = document.createElement("div");
+    node.className = "msg " + direction;
+    node.textContent = text;
+    chat.append(node);
+    chat.scrollTop = chat.scrollHeight;
+  }
+  async function history() {
+    const res = await fetch("/demo/history?contact=demo-user");
+    if (!res.ok) throw new Error("History unavailable");
+    const data = await res.json();
+    chat.replaceChildren();
+    for (const m of data.messages) add(m.body, m.direction);
+    trace.textContent = "Recent tools: " + (data.tools.map(t => t.name).join(", ") || "none");
+  }
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const message = field.value.trim();
+    if (!message) return;
+    button.disabled = true;
+    field.value = "";
+    try {
+      const res = await fetch("/demo/message", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({contact:"demo-user", message})
+      });
+      if (!res.ok) throw new Error("Request failed (" + res.status + ")");
+      const data = await res.json();
+      await history();
+      if (!data.reply) trace.textContent = "No automated reply (opt-out or human handoff).";
+    } catch(e) {add("Error: " + e.message, "out");}
+    finally {button.disabled = false; field.focus();}
+  });
+  history().catch(e => add("History error: " + e.message, "out"));
+</script></body></html>
