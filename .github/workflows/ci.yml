@@ -51,6 +51,18 @@ jobs:
   container:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Build image
         run: docker build -t whatsapp-ai-agent:ci .
+      - name: Start container and check health
+        run: |
+          docker run -d --name whatsapp-ai-agent-ci -p 127.0.0.1:18080:8000 whatsapp-ai-agent:ci
+          trap 'docker rm -f whatsapp-ai-agent-ci >/dev/null 2>&1 || true' EXIT
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:18080/health; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs whatsapp-ai-agent-ci
+          exit 1

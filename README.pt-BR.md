@@ -34,6 +34,15 @@ Exemplos: `services`, `hours`, `availability`, `book consultation AAAA-MM-DD 10:
 - GitHub Actions com pytest, Ruff, migrações, empacotamento e build Docker, sem APIs pagas nem mensagens reais.
 - Mais de 20 cenários fictícios de avaliação em `evals/scenarios.json`.
 
+## Docker (modo demonstrativo)
+
+```bash
+docker build -t whatsapp-ai-agent .
+docker run --rm -p 127.0.0.1:8000:8000 -v whatsapp-demo-data:/app/data whatsapp-ai-agent
+```
+
+O contêiner executa com usuário sem privilégios, banco SQLite gravável no volume `/app/data` e verificação real de inicialização no CI. Não exponha a demonstração na Internet.
+
 ## Integração Meta opcional
 
 Configure as variáveis `WEBHOOK_VERIFY_TOKEN`, `META_APP_SECRET`, `META_ACCESS_TOKEN`, `META_PHONE_NUMBER_ID` e a versão compatível `META_GRAPH_VERSION`. Apenas com autorização e verificação das políticas, altere `ENABLE_REAL_SEND=true`. Hospedagem HTTPS, assinatura da conta e configuração da Meta não são realizadas automaticamente. Fora da janela de atendimento, não há suporte de templates nesta versão.

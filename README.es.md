@@ -33,6 +33,15 @@ Prueba `services`, `hours`, `availability`, `book consultation YYYY-MM-DD 10:00`
 - Transferencia humana, opt-out, límite de mensajes por contacto, autenticación simple para las APIs administrativas y registro de herramientas. El operador autenticado consulta `/admin/conversations/{id}`.
 - Pruebas pytest y GitHub Actions en runners alojados, sin acceso a APIs de pago, más de 20 escenarios de evaluación.
 
+## Docker (demostración local)
+
+```bash
+docker build -t whatsapp-ai-agent .
+docker run --rm -p 127.0.0.1:8000:8000 -v whatsapp-demo-data:/app/data whatsapp-ai-agent
+```
+
+El contenedor utiliza un usuario sin privilegios y un volumen SQLite escribible en `/app/data`. CI comprueba la puesta en marcha y la ruta de salud. No expongas la demostración a Internet.
+
 ## Integración opcional y política
 
 Configura `WEBHOOK_VERIFY_TOKEN`, `META_APP_SECRET`, `META_ACCESS_TOKEN`, `META_PHONE_NUMBER_ID` y `META_GRAPH_VERSION`. Activa `ENABLE_REAL_SEND=true` **solo tras la autorización expresa** y la verificación de requisitos de Meta. No se crea una conexión externa ni se publica una aplicación automáticamente. No se incluyen plantillas aprobadas para mensajes fuera de la ventana de servicio.

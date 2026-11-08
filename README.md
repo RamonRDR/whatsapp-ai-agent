@@ -65,6 +65,15 @@ curl -X POST http://127.0.0.1:8000/demo/reset \\
   -H "X-Admin-API-Key: your-local-admin-key"
 ```
 
+## Docker demo
+
+```bash
+docker build -t whatsapp-ai-agent .
+docker run --rm -p 127.0.0.1:8000:8000 -v whatsapp-demo-data:/app/data whatsapp-ai-agent
+```
+
+The container runs as an unprivileged user with SQLite stored under the writable `/app/data` volume. It serves the local simulator at `http://127.0.0.1:8000/demo`. The CI performs a real container startup and health-request smoke test. Avoid publishing this local demo on a public network.
+
 ## Meta Cloud API contract (optional)
 
 **Do not activate real sends without permission.** Set `WEBHOOK_VERIFY_TOKEN`, `META_APP_SECRET`, `META_ACCESS_TOKEN`, `META_PHONE_NUMBER_ID`, and check `META_GRAPH_VERSION` against your Meta app's supported version. Set `ENABLE_REAL_SEND=true` **only after** verifying your account, permissions, consent and policies. The separate `META_APP_SECRET` is required for signature validation. Webhook callback path: `/webhooks/whatsapp` (GET/POST). Public HTTPS hosting and webhook subscription are not performed by this repository.
