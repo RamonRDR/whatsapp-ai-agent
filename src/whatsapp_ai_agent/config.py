@@ -40,9 +40,7 @@ class Settings(BaseSettings):
             raise ValueError("Real sending requires Meta credentials and app secret")
         if self.llm_provider not in {"deterministic", "openai-compatible"}:
             raise ValueError("Unsupported LLM provider")
-        if self.llm_provider == "openai-compatible" and not all(
-            (self.llm_api_key, self.llm_model)
-        ):
+        if self.llm_provider == "openai-compatible" and not all((self.llm_api_key, self.llm_model)):
             raise ValueError("LLM credentials and model required for live provider")
         return self
 

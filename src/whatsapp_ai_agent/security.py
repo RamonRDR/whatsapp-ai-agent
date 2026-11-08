@@ -12,9 +12,7 @@ from whatsapp_ai_agent.config import get_settings
 def verify_webhook_signature(body: bytes, signature: str | None, app_secret: str) -> bool:
     if not app_secret or not signature or not signature.startswith("sha256="):
         return False
-    calculated = "sha256=" + hmac.new(
-        app_secret.encode("utf-8"), body, hashlib.sha256
-    ).hexdigest()
+    calculated = "sha256=" + hmac.new(app_secret.encode("utf-8"), body, hashlib.sha256).hexdigest()
     return hmac.compare_digest(calculated, signature)
 
 
@@ -30,7 +28,5 @@ def new_token() -> str:
 
 def require_admin(x_admin_api_key: str | None = Header(default=None)) -> None:
     expected = get_settings().admin_api_key
-    if not expected or not x_admin_api_key or not hmac.compare_digest(
-        expected, x_admin_api_key
-    ):
+    if not expected or not x_admin_api_key or not hmac.compare_digest(expected, x_admin_api_key):
         raise HTTPException(status_code=403, detail="Forbidden")

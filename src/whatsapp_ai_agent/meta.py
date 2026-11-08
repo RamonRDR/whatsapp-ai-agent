@@ -17,8 +17,7 @@ class MetaDeliveryError(Exception):
 
 
 def within_customer_window(last_inbound: datetime | None, now: datetime) -> bool:
-    return bool(last_inbound and now - last_inbound < timedelta(hours=24)
-                and last_inbound <= now)
+    return bool(last_inbound and now - last_inbound < timedelta(hours=24) and last_inbound <= now)
 
 
 class MetaClient:
@@ -26,9 +25,7 @@ class MetaClient:
         self.settings = settings
         self.transport = transport
 
-    async def send_text(
-        self, recipient: str, body: str, last_inbound: datetime | None
-    ) -> dict:
+    async def send_text(self, recipient: str, body: str, last_inbound: datetime | None) -> dict:
         if not self.settings.enable_real_send:
             raise OutboundBlocked("Real message delivery is disabled")
         if not within_customer_window(last_inbound, datetime.utcnow()):
@@ -37,10 +34,19 @@ class MetaClient:
             raise ValueError("Invalid recipient")
         if not body or len(body) > 4096:
             raise ValueError("Invalid message size")
-        url = ("https://graph.facebook.com/" + self.settings.meta_graph_version + "/"
-               + self.settings.meta_phone_number_id + "/messages")
-        payload = {"messaging_product": "whatsapp", "to": recipient,
-                   "type": "text", "text": {"preview_url": False, "body": body}}
+        url = (
+            "https://graph.facebook.com/"
+            + self.settings.meta_graph_version
+            + "/"
+            + self.settings.meta_phone_number_id
+            + "/messages"
+        )
+        payload = {
+            "messaging_product": "whatsapp",
+            "to": recipient,
+            "type": "text",
+            "text": {"preview_url": False, "body": body},
+        }
         headers = {"Authorization": "Bearer " + self.settings.meta_access_token}
         async with httpx.AsyncClient(timeout=8, transport=self.transport) as client:
             for attempt in range(3):

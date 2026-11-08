@@ -29,9 +29,12 @@ def run() -> dict:
     latency_ms = []
     with tempfile.TemporaryDirectory() as temp:
         settings = Settings(
-            _env_file=None, database_url="sqlite:///" + str(Path(temp) / "eval.db"),
-            app_env="local", admin_api_key="offline-evaluation-key",
-            llm_provider="deterministic", enable_real_send=False,
+            _env_file=None,
+            database_url="sqlite:///" + str(Path(temp) / "eval.db"),
+            app_env="local",
+            admin_api_key="offline-evaluation-key",
+            llm_provider="deterministic",
+            enable_real_send=False,
         )
         with TestClient(create_app(settings)) as client:
             for case in cases:
@@ -39,11 +42,14 @@ def run() -> dict:
                 for index, message in enumerate(case["messages"]):
                     message = message.replace("NEXT_WEEKDAY", next_weekday())
                     start = time.perf_counter()
-                    resp = client.post("/demo/message", json={
-                        "contact": "case-" + case["name"],
-                        "message": message,
-                        "message_id": case["name"] + "-" + str(index),
-                    })
+                    resp = client.post(
+                        "/demo/message",
+                        json={
+                            "contact": "case-" + case["name"],
+                            "message": message,
+                            "message_id": case["name"] + "-" + str(index),
+                        },
+                    )
                     latency_ms.append((time.perf_counter() - start) * 1000)
                     if resp.status_code != 200:
                         failures.append(case["name"] + ": HTTP " + str(resp.status_code))
@@ -57,9 +63,7 @@ def run() -> dict:
                         passed = case["contains"].casefold() in str(reply).casefold()
                     if "tool" in case:
                         total_with_tool += 1
-                        tool_found = any(
-                            t["name"] == case["tool"] for t in last.get("tools", [])
-                        )
+                        tool_found = any(t["name"] == case["tool"] for t in last.get("tools", []))
                         tool_correct += int(tool_found)
                         passed = passed and tool_found
                     if not passed:

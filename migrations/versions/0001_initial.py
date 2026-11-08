@@ -6,8 +6,8 @@ Revises:
 
 from alembic import op
 
-from whatsapp_ai_agent.database import Base
 from whatsapp_ai_agent import models  # noqa: F401
+from whatsapp_ai_agent.database import Base
 
 revision = "0001"
 down_revision = None

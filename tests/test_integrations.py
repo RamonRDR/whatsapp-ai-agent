@@ -45,8 +45,13 @@ async def test_meta_mock_send_and_rate_limit():
             return httpx.Response(429)
         return httpx.Response(200, json={"messages": [{"id": "wamid.mock"}]})
 
-    settings = Settings(_env_file=None, enable_real_send=True, meta_access_token="fake",
-                        meta_app_secret="fake", meta_phone_number_id="123")
+    settings = Settings(
+        _env_file=None,
+        enable_real_send=True,
+        meta_access_token="fake",
+        meta_app_secret="fake",
+        meta_phone_number_id="123",
+    )
     response = await MetaClient(settings, httpx.MockTransport(handler)).send_text(
         "12345678901", "hello", datetime.utcnow() - timedelta(minutes=5)
     )
@@ -57,8 +62,13 @@ async def test_meta_mock_send_and_rate_limit():
 
 @pytest.mark.asyncio
 async def test_out_of_window_blocked():
-    settings = Settings(_env_file=None, enable_real_send=True, meta_access_token="fake",
-                        meta_app_secret="fake", meta_phone_number_id="123")
+    settings = Settings(
+        _env_file=None,
+        enable_real_send=True,
+        meta_access_token="fake",
+        meta_app_secret="fake",
+        meta_phone_number_id="123",
+    )
     with pytest.raises(OutboundBlocked):
         await MetaClient(settings).send_text(
             "12345678901", "hello", datetime.utcnow() - timedelta(days=2)
@@ -67,12 +77,17 @@ async def test_out_of_window_blocked():
 
 @pytest.mark.asyncio
 async def test_meta_mock_http_failure():
-    settings = Settings(_env_file=None, enable_real_send=True, meta_access_token="fake",
-                        meta_app_secret="fake", meta_phone_number_id="123")
+    settings = Settings(
+        _env_file=None,
+        enable_real_send=True,
+        meta_access_token="fake",
+        meta_app_secret="fake",
+        meta_phone_number_id="123",
+    )
     with pytest.raises(MetaDeliveryError):
-        await MetaClient(settings, httpx.MockTransport(
-            lambda request: httpx.Response(400)
-        )).send_text("12345678901", "hello", datetime.utcnow())
+        await MetaClient(
+            settings, httpx.MockTransport(lambda request: httpx.Response(400))
+        ).send_text("12345678901", "hello", datetime.utcnow())
 
 
 @pytest.mark.asyncio
@@ -81,34 +96,59 @@ async def test_llm_read_only_tool_call():
 
     def handler(request):
         calls.append(json.loads(request.content))
-        return httpx.Response(200, json={"choices": [{"message": {
-            "role": "assistant", "tool_calls": [{
-                "type": "function", "function": {
-                    "name": "list_services", "arguments": "{}"
-                }
-            }]
-        }}]})
+        return httpx.Response(
+            200,
+            json={
+                "choices": [
+                    {
+                        "message": {
+                            "role": "assistant",
+                            "tool_calls": [
+                                {
+                                    "type": "function",
+                                    "function": {"name": "list_services", "arguments": "{}"},
+                                }
+                            ],
+                        }
+                    }
+                ]
+            },
+        )
 
-    settings = Settings(_env_file=None, llm_provider="openai-compatible",
-                        llm_api_key="test", llm_model="offline-test")
-    result = await LLMAdapter(settings, httpx.MockTransport(handler)).decide([
-        {"role": "user", "content": "services"}
-    ])
+    settings = Settings(
+        _env_file=None,
+        llm_provider="openai-compatible",
+        llm_api_key="test",
+        llm_model="offline-test",
+    )
+    result = await LLMAdapter(settings, httpx.MockTransport(handler)).decide(
+        [{"role": "user", "content": "services"}]
+    )
     assert result["tool_calls"][0]["function"]["name"] == "list_services"
     assert calls[0]["tool_choice"] == "auto"
 
 
 @pytest.mark.asyncio
 async def test_llm_cannot_call_unapproved_tool():
-    settings = Settings(_env_file=None, llm_provider="openai-compatible",
-                        llm_api_key="test", llm_model="offline-test")
-    response = {"choices": [{"message": {"tool_calls": [{
-        "function": {"name": "execute_shell", "arguments": "{}"}
-    }]}}]}
+    settings = Settings(
+        _env_file=None,
+        llm_provider="openai-compatible",
+        llm_api_key="test",
+        llm_model="offline-test",
+    )
+    response = {
+        "choices": [
+            {
+                "message": {
+                    "tool_calls": [{"function": {"name": "execute_shell", "arguments": "{}"}}]
+                }
+            }
+        ]
+    }
     with pytest.raises(LLMUnavailable):
-        await LLMAdapter(settings, httpx.MockTransport(
-            lambda request: httpx.Response(200, json=response)
-        )).decide([{"role": "user", "content": "hack"}])
+        await LLMAdapter(
+            settings, httpx.MockTransport(lambda request: httpx.Response(200, json=response))
+        ).decide([{"role": "user", "content": "hack"}])
 
 
 def test_configuration_fails_closed():

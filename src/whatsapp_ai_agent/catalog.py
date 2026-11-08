@@ -26,15 +26,26 @@ SEED = [
 def seed_catalog(session: Session) -> None:
     for code, name, description, duration, price in SEED:
         if session.get(Service, code) is None:
-            session.add(Service(code=code, name=name, description=description,
-                                duration_minutes=duration, price_cents=price))
+            session.add(
+                Service(
+                    code=code,
+                    name=name,
+                    description=description,
+                    duration_minutes=duration,
+                    price_cents=price,
+                )
+            )
     session.commit()
 
 
 def list_services(session: Session) -> list[dict]:
     return [
-        {"code": s.code, "name": s.name, "duration_minutes": s.duration_minutes,
-         "price_cents": s.price_cents}
+        {
+            "code": s.code,
+            "name": s.name,
+            "duration_minutes": s.duration_minutes,
+            "price_cents": s.price_cents,
+        }
         for s in session.query(Service).order_by(Service.code).all()
     ]
 
@@ -43,8 +54,13 @@ def get_service_details(session: Session, code: str) -> dict:
     s = session.get(Service, code)
     if s is None:
         return {"error": "Service not found"}
-    return {"code": s.code, "name": s.name, "description": s.description,
-            "duration_minutes": s.duration_minutes, "price_cents": s.price_cents}
+    return {
+        "code": s.code,
+        "name": s.name,
+        "description": s.description,
+        "duration_minutes": s.duration_minutes,
+        "price_cents": s.price_cents,
+    }
 
 
 def search_faq(query: str) -> dict:

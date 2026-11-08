@@ -11,11 +11,19 @@ import httpx
 from whatsapp_ai_agent.config import Settings
 
 TOOLS = [
-    {"type": "function", "function": {
-        "name": name, "description": description,
-        "parameters": {"type": "object", "properties": properties,
-                       "additionalProperties": False, "required": required},
-    }}
+    {
+        "type": "function",
+        "function": {
+            "name": name,
+            "description": description,
+            "parameters": {
+                "type": "object",
+                "properties": properties,
+                "additionalProperties": False,
+                "required": required,
+            },
+        },
+    }
     for name, description, properties, required in [
         ("list_services", "List demo services", {}, []),
         ("get_service_details", "Read one service", {"code": {"type": "string"}}, ["code"]),
@@ -39,13 +47,19 @@ class LLMAdapter:
         if self.settings.llm_provider != "openai-compatible":
             raise LLMUnavailable("Deterministic mode does not call an LLM")
         url = self.settings.llm_api_base.rstrip("/") + "/chat/completions"
-        payload = {"model": self.settings.llm_model, "messages": messages[-12:],
-                   "tools": TOOLS, "tool_choice": "auto", "temperature": 0,
-                   "max_tokens": self.settings.llm_max_tokens}
+        payload = {
+            "model": self.settings.llm_model,
+            "messages": messages[-12:],
+            "tools": TOOLS,
+            "tool_choice": "auto",
+            "temperature": 0,
+            "max_tokens": self.settings.llm_max_tokens,
+        }
         try:
             async with httpx.AsyncClient(timeout=12, transport=self.transport) as client:
                 response = await client.post(
-                    url, json=payload,
+                    url,
+                    json=payload,
                     headers={"Authorization": "Bearer " + self.settings.llm_api_key},
                 )
                 response.raise_for_status()
