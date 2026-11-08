@@ -8,15 +8,15 @@ GET verification proves webhook ownership using a token. POST authenticity is a 
 
 ## Prompt injection and human approval
 
-Incoming user messages are **never executable instructions**. The LLM adapter accepts only five read-only tool schemas, limits tool-call count, validates parsed JSON and rejects arbitrary tool names. A model response cannot directly create appointments, send messages, read files or approve cancellations. Booking confirmation is a deterministic state transition; cancellation enters the human queue.
+Incoming user messages are **never executable instructions**. The LLM adapter accepts only six read-only tool schemas, limits tool-call count, validates parsed JSON and rejects arbitrary tool names. A model response cannot directly create appointments, send messages, read files or approve cancellations. Booking confirmation is a deterministic state transition with duration-aware slot locks; cancellation enters the human queue. An authenticated operator must first generate an expiring approval token, then consume it once.
 
 ## Data handling
 
-A phone number is HMAC-pseudonymized for persistence. The in-memory sender value may be used to address a reply while the request is executing, but it is not written to the contact table. The **message body itself remains plaintext** in the local database and may contain identifying text. Use synthetic data only. `MESSAGE_RETENTION_DAYS` is a documented configuration placeholder until retention cleanup is implemented. Operators should treat database snapshots, logs, export artifacts and endpoint access as sensitive.
+A phone number is HMAC-pseudonymized for persistence. The in-memory sender value may be used to address a reply while the request is executing, but it is not written to the contact table. The **message body itself remains plaintext** in the local database and may contain identifying text. Use synthetic data only. `MESSAGE_RETENTION_DAYS` is enforced through authenticated \`POST /admin/purge-history\` requests; schedule and audit this cleanup before using real data. Operators should treat database snapshots, logs, export artifacts and endpoint access as sensitive.
 
 ## Deployment restrictions
 
-The demonstration interface is disabled when `APP_ENV` is not local; outside local mode, startup requires a strong admin key. In production, add managed authentication, TLS, proper credentials rotation, a queue, persistent rate limiting, audit retention, a data retention job, monitoring, security review, consent and legal assessment. Avoid exposing the local demonstration or SQLite file to the Internet. Never commit `.env`.
+The demonstration interface is disabled when `APP_ENV` is not local; outside local mode, startup requires a strong admin key. In production, add managed authentication, TLS, proper credentials rotation, a queue, persistent rate limiting across hosts, audit retention, a scheduled data retention job, monitoring, security review, consent and legal assessment. Avoid exposing the local demonstration or SQLite file to the Internet. Never commit `.env`.
 
 ## Responsible Meta messaging
 

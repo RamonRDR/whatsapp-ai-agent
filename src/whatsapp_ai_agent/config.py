@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     llm_max_tokens: int = Field(400, ge=16, le=2048)
     llm_max_tool_calls: int = Field(3, ge=1, le=5)
     message_retention_days: int = Field(30, ge=1, le=365)
+    inbound_rate_limit: int = Field(10, ge=2, le=100)
 
     @model_validator(mode="after")
     def validate_security(self) -> "Settings":

@@ -21,7 +21,7 @@ uvicorn whatsapp_ai_agent.api:app --host 127.0.0.1 --port 8000
 
 Acesse **http://127.0.0.1:8000/demo** (simulação) e **/docs** (OpenAPI). No Windows, use `.venv\\Scripts\\activate` e `copy .env.example .env`.
 
-Exemplos: `services`, `hours`, `availability`, `book consultation AAAA-MM-DD 10:00`, `CONFIRM`, `NO`, `HUMAN`, `STOP`. Serviços, endereço, preços e disponibilidade são inteiramente fictícios. A confirmação só registra o agendamento demonstrativo após resposta explícita. Cancelamentos exigem encaminhamento humano.
+Exemplos: `services`, `hours`, `availability`, `book consultation AAAA-MM-DD 10:00`, `CONFIRM`, `NO`, `HUMAN`, `STOP`. Serviços, endereço, preços e disponibilidade são inteiramente fictícios. A confirmação só registra o agendamento demonstrativo após resposta explícita. Cancelamentos exigem encaminhamento humano e autorização administrativa de uso único. Os agendamentos bloqueiam todos os intervalos cobertos pela duração do serviço.
 
 ## Arquitetura e funções
 
@@ -50,6 +50,6 @@ docker build -t whatsapp-ai-agent .
 
 A chave administrativa é enviada no cabeçalho `X-Admin-API-Key` para `/demo/reset`, `/admin/handoffs`, `/admin/handoffs/{id}/resume` e `/admin/appointments`. Não exponha a chave nem use dados pessoais em demonstrações.
 
-**Limitações:** ainda não validado com a API real; sem filas duráveis de saída, templates, interface profissional de operadores, rate limit distribuído, limpeza automática por retenção ou revisão jurídica LGPD. O agendamento é fictício, de slot único; não é uma agenda comercial. Leia [arquitetura](docs/architecture.md) e [segurança](docs/security.md).
+**Limitações:** ainda não validado com a API real; sem filas duráveis de saída, templates, interface profissional de operadores, rate limit distribuído, agendamento automático de limpeza por retenção (existe rota administrativa `/admin/purge-history`) ou revisão jurídica LGPD. O agendamento é fictício, de slot único; não é uma agenda comercial. Leia [arquitetura](docs/architecture.md) e [segurança](docs/security.md).
 
 **Licença:** [MIT](LICENSE), © 2026 Ramon Rodriguez.

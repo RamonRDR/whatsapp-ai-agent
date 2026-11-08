@@ -17,7 +17,7 @@ An offline-first WhatsApp-style customer support agent with a **real Meta WhatsA
 - Fictional business catalog; read-only tools: `list_services`, `get_service_details`, `get_business_hours`, `get_business_information`, `search_faq`, plus deterministic availability.
 - Deterministic, credential-free default agent; optional OpenAI-compatible chat-completions adapter with validated **read-only** function calls. Never grants the LLM booking or cancellation permissions.
 - Demonstration bookings with explicit CONFIRM, rejection, and unique-slot conflict protection.
-- Opt-out, human handoff, and authenticated API endpoints for human resumption.
+- Opt-out, per-contact inbound rate limiting, human handoff, authenticated resumption, and human cancellation through a single-use approval token. Message retention has an authenticated manual purge endpoint.
 - Local HTML chat UI, message history and tool trace. No client data or real phone numbers in examples.
 - Docker image, GitHub Actions (Python 3.12 and 3.14), pytest, Ruff, migrations and at least 20 fictional evaluation scenarios.
 
@@ -75,7 +75,7 @@ Free-text responses are restricted to the customer-service window; outside it, b
 
 ## LLM and tools
 
-The default `LLM_PROVIDER=deterministic` works fully offline. To enable a separate compatible model, configure `LLM_PROVIDER=openai-compatible`, `LLM_API_BASE`, `LLM_MODEL` and `LLM_API_KEY`. The adapter supports read-only tool calls with strict allowlists, JSON argument checks, bounded history and a maximum tool budget. Tool results, not free-text model claims, supply responses. **This opt-in mode may incur external cost**; it is never enabled in mandatory CI.
+The default `LLM_PROVIDER=deterministic` works fully offline. To enable a separate compatible model, configure `LLM_PROVIDER=openai-compatible`, `LLM_API_BASE`, `LLM_MODEL` and `LLM_API_KEY`. The adapter supports read-only tool calls with strict allowlists (including dated availability), JSON argument checks, bounded history and a maximum tool budget. Tool results, not free-text model claims, supply responses. **This opt-in mode may incur external cost**; it is never enabled in mandatory CI.
 
 The business catalog is intentionally fictional: `Demo Studio`, a synthetic address, weekday hours, three fake services and sample prices in cents. Missing facts are never invented.
 
@@ -99,11 +99,11 @@ GitHub Actions uses hosted runners only. It performs static checks, tests, migra
 - Phone identifiers stored as keyed pseudonyms; note that **demo conversations are stored in plaintext locally**, so restrict access to the database.
 - `STOP` suppresses future automation; `HUMAN` pauses automation; authenticated `/admin/handoffs` and `/admin/handoffs/{id}/resume` provide a minimal operator API.
 - Explicit CONFIRM is consumed once, while cancellations are escalated for human authorization. The AI model can invoke **no write tools**.
-- `MESSAGE_RETENTION_DAYS` is reserved for retention settings; automated retention enforcement is not yet implemented. Apply retention/privacy controls before using real customer data.
+- `MESSAGE_RETENTION_DAYS` controls the authenticated manual `/admin/purge-history` endpoint; schedule cleanup yourself. Apply further privacy controls before using real customer data.
 
 ## Known limitations
 
-This is a portfolio demo, **not production-ready WhatsApp infrastructure**. Integration is mock-tested only, not verified on a real Meta account; no deployed bot, public webhook subscription or real send has been performed. There is no durable outbound job queue, message-template approval/sending, per-tenant isolation, distributed rate limiter, production operator UI, production authentication provider, or GDPR/LGPD legal review. The simplified single-slot demo cannot serve overlapping durations professionally. The LLM opt-in may have provider-specific schema differences. No SLA, benchmark, delivery guarantee, or live integration is claimed.
+This is a portfolio demo, **not production-ready WhatsApp infrastructure**. Integration is mock-tested only, not verified on a real Meta account; no deployed bot, public webhook subscription or real send has been performed. There is no durable outbound job queue, message-template approval/sending, per-tenant isolation, distributed rate limiter, scheduled retention job, production operator UI, production authentication provider, or GDPR/LGPD legal review. Duration-aware 30-minute slot locks prevent overlaps in the fictional schedule, but this is not a multi-professional booking engine. The LLM opt-in may have provider-specific schema differences. No SLA, benchmark, delivery guarantee, or live integration is claimed.
 
 Technical details and decisions: [docs/architecture.md](docs/architecture.md), [docs/security.md](docs/security.md), [docs/decisions.md](docs/decisions.md).
 

@@ -2,6 +2,9 @@
 
 import json
 import uuid
+import hmac
+import hashlib
+from datetime import timedelta
 from collections.abc import Iterator
 from datetime import datetime
 from importlib.resources import files
@@ -18,7 +21,9 @@ from whatsapp_ai_agent.config import Settings, get_settings
 from whatsapp_ai_agent.database import Base, make_engine, make_session_factory
 from whatsapp_ai_agent.meta import MetaClient, MetaDeliveryError, OutboundBlocked
 from whatsapp_ai_agent.models import (
+    AdminApproval,
     AppointmentRequest,
+    AppointmentSlot,
     Contact,
     Conversation,
     DeliveryStatus,
@@ -27,7 +32,8 @@ from whatsapp_ai_agent.models import (
     ToolExecution,
     utcnow,
 )
-from whatsapp_ai_agent.security import pseudonymize, verify_webhook_signature
+from whatsapp_ai_agent.security import new_token, pseudonymize, verify_webhook_signature
+from whatsapp_ai_agent.telemetry import emit
 
 
 class DemoInput(BaseModel):
@@ -236,6 +242,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                             # Deliberately no retry in webhook: no duplicate sends.
                             # Production-grade outbound delivery needs a durable outbox.
                             ignored += 1
+        emit("webhook_received", processed=processed, ignored=ignored)
         return {"processed": processed, "ignored": ignored}
 
     @app.get("/admin/handoffs", dependencies=[Depends(admin)])
@@ -270,6 +277,74 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 {"id": a.id, "service": a.service_code, "slot": a.slot, "status": a.status}
                 for a in rows
             ]
+        }
+
+    @app.post("/admin/appointments/{appointment_id}/cancellation-approval",
+              dependencies=[Depends(admin)])
+    def approve_cancellation(appointment_id: int, session: Session = Depends(db)) -> dict:
+        appointment = session.get(AppointmentRequest, appointment_id)
+        if appointment is None or appointment.status != "confirmed":
+            raise HTTPException(status_code=404, detail="Active appointment not found")
+        token = new_token()
+        record = AdminApproval(
+            appointment_id=appointment.id,
+            token_digest=hashlib.sha256(token.encode()).hexdigest(),
+            expires_at=utcnow() + timedelta(minutes=5),
+            consumed=False,
+        )
+        session.add(record)
+        session.commit()
+        return {"approval_token": token, "expires_in_seconds": 300}
+
+    @app.post("/admin/appointments/{appointment_id}/cancel", dependencies=[Depends(admin)])
+    def cancel_appointment(
+        appointment_id: int, x_approval_token: str | None = Header(default=None),
+        session: Session = Depends(db)
+    ) -> dict:
+        appointment = session.get(AppointmentRequest, appointment_id)
+        if appointment is None or appointment.status != "confirmed":
+            raise HTTPException(status_code=404, detail="Active appointment not found")
+        if not x_approval_token or len(x_approval_token) > 100:
+            raise HTTPException(status_code=403, detail="Valid cancellation approval required")
+        digest = hashlib.sha256(x_approval_token.encode()).hexdigest()
+        approval = session.scalar(select(AdminApproval).where(
+            AdminApproval.appointment_id == appointment_id,
+            AdminApproval.consumed.is_(False),
+            AdminApproval.expires_at > utcnow(),
+            AdminApproval.token_digest == digest,
+        ).order_by(AdminApproval.id.desc()))
+        if approval is None or not hmac.compare_digest(approval.token_digest, digest):
+            raise HTTPException(status_code=403, detail="Invalid or expired cancellation approval")
+        approval.consumed = True
+        appointment.status = "cancelled"
+        session.execute(delete(AppointmentSlot).where(
+            AppointmentSlot.appointment_id == appointment.id
+        ))
+        conv = session.scalar(select(Conversation).where(
+            Conversation.contact_id == appointment.contact_id
+        ))
+        if conv is not None:
+            session.add(ToolExecution(
+                conversation_id=conv.id,
+                tool="human_cancel_appointment", details=str(appointment.id),
+                success=True,
+            ))
+        session.commit()
+        return {"cancelled": True, "appointment_id": appointment_id}
+
+    @app.post("/admin/purge-history", dependencies=[Depends(admin)])
+    def purge_history(session: Session = Depends(db)) -> dict:
+        cutoff = utcnow() - timedelta(days=settings.message_retention_days)
+        count = session.execute(delete(Message).where(Message.created_at < cutoff)).rowcount
+        session.execute(delete(ToolExecution).where(ToolExecution.created_at < cutoff))
+        session.execute(delete(HumanHandoff).where(
+            HumanHandoff.created_at < cutoff,
+            HumanHandoff.status != "open",
+        ))
+        session.commit()
+        return {
+            "purged_messages": count,
+            "retention_days": settings.message_retention_days,
         }
 
     return app

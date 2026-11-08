@@ -21,7 +21,7 @@ uvicorn whatsapp_ai_agent.api:app --host 127.0.0.1 --port 8000
 
 Abre **http://127.0.0.1:8000/demo** para la simulación o **/docs** para OpenAPI. En Windows: `.venv\\Scripts\\activate` y `copy .env.example .env`.
 
-Prueba `services`, `hours`, `availability`, `book consultation YYYY-MM-DD 10:00`, `CONFIRM`, `NO`, `HUMAN` y `STOP`. Todos los servicios, precios, horarios y direcciones del catálogo son ficticios. Una cita se registra solo después de la confirmación explícita; una cancelación requiere atención humana.
+Prueba `services`, `hours`, `availability`, `book consultation YYYY-MM-DD 10:00`, `CONFIRM`, `NO`, `HUMAN` y `STOP`. Todos los servicios, precios, horarios y direcciones del catálogo son ficticios. Una cita se registra solo después de la confirmación explícita; una cancelación exige aprobación administrativa de un solo uso. Las citas bloquean todos los intervalos de su duración.
 
 ## Componentes
 
@@ -30,7 +30,7 @@ Prueba `services`, `hours`, `availability`, `book consultation YYYY-MM-DD 10:00`
 - Persistencia SQLAlchemy (SQLite o PostgreSQL) y migraciones Alembic.
 - Herramientas `list_services`, `get_service_details`, `get_business_hours`, `get_business_information`, `search_faq` y disponibilidad demostrativa.
 - Motor determinista gratuito; modelo compatible con tool calling opcional y **solo de lectura**.
-- Transferencia humana, opt-out, autenticación simple para las APIs administrativas y registro de herramientas.
+- Transferencia humana, opt-out, límite de mensajes por contacto, autenticación simple para las APIs administrativas y registro de herramientas.
 - Pruebas pytest y GitHub Actions en runners alojados, sin acceso a APIs de pago, más de 20 escenarios de evaluación.
 
 ## Integración opcional y política
@@ -49,7 +49,7 @@ docker build -t whatsapp-ai-agent .
 
 Para las operaciones administrativas, suministra `X-Admin-API-Key`. No incluyas datos reales en ejemplos.
 
-**Limitaciones:** sin validación en vivo con Meta, sin cola saliente duradera, sin soporte de plantillas, sin panel completo del operador, sin rate limit distribuido, sin eliminación automática por retención y sin evaluación jurídica de protección de datos. Las citas usan espacios ficticios únicos.
+**Limitaciones:** sin validación en vivo con Meta, sin cola saliente duradera, sin soporte de plantillas, sin panel completo del operador, sin rate limit distribuido, sin limpieza programada por retención (existe `/admin/purge-history` con autenticación) y sin evaluación jurídica de protección de datos. Las citas usan espacios ficticios únicos.
 
 Más detalles: [arquitectura](docs/architecture.md), [seguridad](docs/security.md) y [decisiones](docs/decisions.md).
 

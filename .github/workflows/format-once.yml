@@ -1,0 +1,30 @@
+name: One-time Ruff formatting
+on:
+  push:
+    branches: [feat/whatsapp-ai-agent-foundation]
+permissions:
+  contents: write
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Apply formatter to feature branch
+        run: |
+          python -m pip install ruff
+          ruff check --fix . || true
+          ruff format .
+      - name: Save formatting changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if ! git diff --cached --quiet; then
+            git commit -m "style: apply Ruff autoformat"
+            git push origin HEAD:feat/whatsapp-ai-agent-foundation
+          fi

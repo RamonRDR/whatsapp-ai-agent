@@ -53,11 +53,10 @@ class MetaClient:
                 try:
                     response = await client.post(url, json=payload, headers=headers)
                 except (httpx.TimeoutException, httpx.TransportError) as exc:
-                    if attempt == 2:
-                        raise MetaDeliveryError("Meta transport failure") from exc
-                    await asyncio.sleep(0.25 * (attempt + 1))
-                    continue
-                if response.status_code == 429 or response.status_code >= 500:
+                    # An ambiguous network failure may have already delivered the message.
+                    # Do not retry without a durable provider-aware idempotency protocol.
+                    raise MetaDeliveryError("Meta transport failure") from exc
+                if response.status_code == 429:
                     if attempt < 2:
                         await asyncio.sleep(0.25 * (attempt + 1))
                         continue

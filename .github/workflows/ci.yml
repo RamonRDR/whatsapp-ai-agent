@@ -22,8 +22,8 @@ jobs:
       matrix:
         python-version: ["3.12", "3.14"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
@@ -39,6 +39,8 @@ jobs:
           ENABLE_REAL_SEND: "false"
           LLM_PROVIDER: "deterministic"
         run: pytest -q
+      - name: Deterministic agent quality evaluation
+        run: python -m evals.run
       - name: Alembic migration from empty database
         env:
           DATABASE_URL: "sqlite:///./ci-migrations.db"

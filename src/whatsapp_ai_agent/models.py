@@ -64,7 +64,7 @@ class Service(Base):
 
 class AppointmentRequest(Base):
     __tablename__ = "appointments"
-    __table_args__ = (UniqueConstraint("slot"),)
+    # Overlap locking is enforced by unique AppointmentSlot records, not appointment start slots.
     id: Mapped[int] = mapped_column(primary_key=True)
     contact_id: Mapped[int] = mapped_column(ForeignKey("contacts.id"), index=True)
     service_code: Mapped[str] = mapped_column(ForeignKey("services.code"))
@@ -98,3 +98,22 @@ class DeliveryStatus(Base):
     external_id: Mapped[str] = mapped_column(String(128), unique=True)
     status: Mapped[str] = mapped_column(String(32))
     recorded_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class AppointmentSlot(Base):
+    """Unique half-hour resource lock covering a booked service's full duration."""
+
+    __tablename__ = "appointment_slots"
+    slot: Mapped[str] = mapped_column(String(40), primary_key=True)
+    appointment_id: Mapped[int] = mapped_column(ForeignKey("appointments.id"), index=True)
+
+
+class AdminApproval(Base):
+    """Single-use, short-lived approval for an operator cancellation."""
+
+    __tablename__ = "admin_approvals"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    appointment_id: Mapped[int] = mapped_column(ForeignKey("appointments.id"), index=True)
+    token_digest: Mapped[str] = mapped_column(String(64))
+    expires_at: Mapped[datetime] = mapped_column(DateTime)
+    consumed: Mapped[bool] = mapped_column(Boolean, default=False)
