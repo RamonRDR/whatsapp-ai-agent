@@ -1,13 +1,21 @@
 """Duration-aware bookings, operator approvals, retention and inbound throttling."""
 
+import asyncio
+import json
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
+from threading import Barrier
 
-from sqlalchemy import update
+import httpx
+import pytest
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
-from whatsapp_ai_agent.database import make_engine
-from whatsapp_ai_agent.models import Message, utcnow
+from whatsapp_ai_agent.agent import Agent
+from whatsapp_ai_agent.config import Settings
+from whatsapp_ai_agent.database import make_engine, make_session_factory
+from whatsapp_ai_agent.models import Message, ToolExecution, utcnow
 
 
 def send(client, contact, message):
@@ -99,3 +107,110 @@ def test_purge_history_requires_admin_and_respects_retention(client, settings):
     assert result["purged_messages"] == 2
     assert result["retention_days"] == 30
     assert client.get("/demo/history", params={"contact": "one"}).json()["messages"] == []
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("interruption", ["STOP", "HUMAN"])
+async def test_llm_reply_is_suppressed_after_interruption(client, settings, interruption):
+    # An existing conversation permits STOP/HUMAN to commit during the provider await.
+    send(client, "operator-test", "services")
+    llm_settings = Settings(
+        _env_file=None,
+        database_url=settings.database_url,
+        admin_api_key=settings.admin_api_key,
+        llm_provider="openai-compatible",
+        llm_api_key="mock-only",
+        llm_model="mock-only",
+    )
+    started = asyncio.Event()
+    resume = asyncio.Event()
+    captured = []
+
+    class PausedProvider(httpx.AsyncBaseTransport):
+        async def handle_async_request(self, request):
+            captured.append(json.loads(request.content))
+            started.set()
+            await asyncio.wait_for(resume.wait(), timeout=5)
+            return httpx.Response(
+                200,
+                json={
+                    "choices": [
+                        {
+                            "message": {
+                                "role": "assistant",
+                                "tool_calls": [
+                                    {
+                                        "type": "function",
+                                        "function": {
+                                            "name": "get_business_hours",
+                                            "arguments": "{}",
+                                        },
+                                    }
+                                ],
+                            }
+                        }
+                    ]
+                },
+            )
+
+    factory = make_session_factory(make_engine(settings.database_url))
+    with factory() as slow_session:
+        future = asyncio.create_task(
+            Agent(llm_settings).process(
+                slow_session,
+                "operator-test",
+                "What are your hours today?",
+                "slow-llm-" + interruption,
+                llm_transport=PausedProvider(),
+            )
+        )
+        await asyncio.wait_for(started.wait(), timeout=5)
+        with factory() as control_session:
+            control = await Agent(settings).process(
+                control_session,
+                "operator-test",
+                interruption,
+                "control-" + interruption,
+            )
+        assert control["state"] in {"opted_out", "human"}
+        resume.set()
+        result = await asyncio.wait_for(future, timeout=5)
+        assert result["reply"] is None
+        assert result["tools"] == []
+
+    assert captured[0]["messages"][-1]["content"] == "What are your hours today?"
+    history = client.get("/demo/history", params={"contact": "operator-test"}).json()
+    assert not any(
+        message["direction"] == "out" and "09:00" in message["body"]
+        for message in history["messages"]
+    )
+    assert not any(tool["name"] == "get_business_hours" for tool in history["tools"])
+
+
+def test_concurrent_cancellation_cannot_reuse_approval(client, settings):
+    day = next_weekday()
+    send(client, "owner", "book consultation " + day + " 10:00")
+    send(client, "owner", "CONFIRM")
+    headers = {"x-admin-api-key": "unit-test-admin-secret"}
+    appointment = client.get("/admin/appointments", headers=headers).json()["appointments"][0]
+    path = "/admin/appointments/" + str(appointment["id"])
+    token = client.post(path + "/cancellation-approval", headers=headers).json()["approval_token"]
+    barrier = Barrier(2)
+
+    def cancel():
+        barrier.wait(timeout=5)
+        return client.post(path + "/cancel", headers={**headers, "x-approval-token": token})
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        left = pool.submit(cancel)
+        right = pool.submit(cancel)
+        responses = [left.result(timeout=10), right.result(timeout=10)]
+
+    statuses = sorted(response.status_code for response in responses)
+    assert statuses in ([200, 403], [200, 404])
+    rows = client.get("/admin/appointments", headers=headers).json()["appointments"]
+    assert rows[0]["status"] == "cancelled"
+    with Session(make_engine(settings.database_url)) as session:
+        audit_rows = session.scalars(
+            select(ToolExecution).where(ToolExecution.tool == "human_cancel_appointment")
+        ).all()
+        assert len(audit_rows) == 1
