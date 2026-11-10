@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "feat/**"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.14"]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Install package and test dependencies
+        run: python -m pip install -e ".[dev]" pytest-asyncio build
+      - name: Ruff lint
+        run: ruff check .
+      - name: Ruff format check
+        run: ruff format --check .
+      - name: Unit, API and mock integration tests
+        env:
+          DATABASE_URL: "sqlite:///./ci-agent.db"
+          ENABLE_REAL_SEND: "false"
+          LLM_PROVIDER: "deterministic"
+        run: pytest -q
+      - name: Deterministic agent quality evaluation
+        run: python -m evals.run
+      - name: Alembic migration from empty database
+        env:
+          DATABASE_URL: "sqlite:///./ci-migrations.db"
+        run: alembic upgrade head && alembic current
+      - name: Build package
+        run: python -m build
+
+  container:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build image
+        run: docker build -t whatsapp-ai-agent:ci .
+      - name: Start container and check health
+        run: |
+          docker run -d --name whatsapp-ai-agent-ci -p 127.0.0.1:18080:8000 whatsapp-ai-agent:ci
+          trap 'docker rm -f whatsapp-ai-agent-ci >/dev/null 2>&1 || true' EXIT
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:18080/health; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs whatsapp-ai-agent-ci
+          exit 1
