@@ -12,7 +12,7 @@
 
 [![Docker](https://img.shields.io/badge/Docker-build%20%26%20smoke-2496ED)](Dockerfile) [![Meta WhatsApp API](https://img.shields.io/badge/Meta%20Cloud%20API-mock--tested-25D366)](src/whatsapp_ai_agent/meta.py) [![LLM tool calling](https://img.shields.io/badge/LLM%20tool%20calling-opt--in-7C3AED)](src/whatsapp_ai_agent/llm.py) [![HMAC-SHA256](https://img.shields.io/badge/HMAC--SHA256-webhook%20validation-5F6368)](src/whatsapp_ai_agent/security.py) [![Offline demo](https://img.shields.io/badge/Demo-offline%20%2F%20fictional-007F75)](src/whatsapp_ai_agent/static/demo.html)
 
-[![pytest 32 passing](https://img.shields.io/badge/pytest-32%20passing-0A9EDC)](https://github.com/RamonRDR/whatsapp-ai-agent/actions/runs/42480937612) [![pytest-asyncio](https://img.shields.io/badge/pytest--asyncio-async%20tests-0A9EDC)](tests/test_integrations.py) [![Ruff](https://img.shields.io/badge/Ruff-lint%20%26%20format-A8C93C)](.github/workflows/ci.yml) [![Offline evaluation 24/24](https://img.shields.io/badge/Offline%20evaluation-24%2F24%20passing-2ea44f)](evals/scenarios.json) [![OpenAPI](https://img.shields.io/badge/OpenAPI-%2Fdocs-6BA539)](src/whatsapp_ai_agent/api.py) [![Package build](https://img.shields.io/badge/Package-build%20verified-5865F2)](.github/workflows/ci.yml)
+[![pytest 38 passing](https://img.shields.io/badge/pytest-38%20passing-0A9EDC)](https://github.com/RamonRDR/whatsapp-ai-agent/actions/runs/42841876281) [![pytest-asyncio](https://img.shields.io/badge/pytest--asyncio-async%20tests-0A9EDC)](tests/test_integrations.py) [![Ruff](https://img.shields.io/badge/Ruff-lint%20%26%20format-A8C93C)](.github/workflows/ci.yml) [![Offline evaluation 24/24](https://img.shields.io/badge/Offline%20evaluation-24%2F24%20passing-2ea44f)](evals/scenarios.json) [![OpenAPI](https://img.shields.io/badge/OpenAPI-%2Fdocs-6BA539)](src/whatsapp_ai_agent/api.py) [![Package build](https://img.shields.io/badge/Package-build%20verified-5865F2)](.github/workflows/ci.yml)
 
 </div>
 
@@ -45,7 +45,7 @@ O repositório demonstra backend Python, integrações HTTP, controles de IA apl
 | Persistência | SQLAlchemy 2.x, SQLite, Alembic >=1.13 | Modelos, migrações, volume local Docker |
 | Integrações | httpx >=0.27; adaptador Meta Graph API | Transporte HTTP testado com mocks; envio real bloqueado |
 | IA aplicada | Adaptador opcional compatível com OpenAI, com seis funções somente de leitura | `llm.py`; modelo externo não executado no CI |
-| Testes/qualidade | pytest >=8, pytest-asyncio >=0.25, Ruff >=0.9 | Logs GitHub Actions; 32 aprovados em cada Python |
+| Testes/qualidade | pytest >=8, pytest-asyncio >=0.25, Ruff >=0.9 | Logs GitHub Actions; 38 aprovados em cada Python |
 | Infraestrutura | Docker (Python 3.14 slim), GitHub Actions, pacote Python com setuptools | Build, inicialização/health e empacotamento |
 | Docs API | OpenAPI e Swagger UI | `/openapi.json` e `/docs` do FastAPI |
 
@@ -190,9 +190,9 @@ alembic upgrade head
 docker build -t whatsapp-ai-agent .
 ```
 
-**Evidência:** [execução PR #42480937612](https://github.com/RamonRDR/whatsapp-ai-agent/actions/runs/42480937612), 08/11/2026. Python 3.12: **32 aprovados, 0 falhas, 0 ignorados**; Python 3.14: **32 aprovados, 0 falhas, 0 ignorados**. Os logs registraram warnings, mas nenhum teste falhou. Os 24 cenários fictícios determinísticos passaram; taxa observada de seleção correta de ferramentas nesse conjunto de 100%, zero chamadas externas e US$ 0 em LLM. Esses números são **offline, não avaliação de um LLM real**.
+**Evidência:** [execução PR #42841876281](https://github.com/RamonRDR/whatsapp-ai-agent/actions/runs/42841876281), 10/11/2026. Python 3.12: **38 aprovados, 0 falhas, 0 ignorados**; Python 3.14: **38 aprovados, 0 falhas, 0 ignorados**. Os logs registraram warnings, mas nenhum teste falhou. Os 24 cenários fictícios determinísticos passaram; taxa observada de seleção correta de ferramentas nesse conjunto de 100%, zero chamadas externas e US$ 0 em LLM. Esses números são **offline, não avaliação de um LLM real**.
 
-O badge `pytest | 32 passing` é **estático, fundamentado nessa execução**. Se os testes mudarem, confira a execução mais recente de `pytest -q` nos dois Pythons e atualize o mesmo badge nos três READMEs; não conte funções manualmente. O badge de CI aponta para a **branch de desenvolvimento** enquanto a PR não for integrada; após merge autorizado, ajuste para `main`. Não há commits automáticos nem tokens especiais.
+O badge `pytest | 38 passing` é **estático, fundamentado nessa execução**. Se os testes mudarem, confira a execução mais recente de `pytest -q` nos dois Pythons e atualize o mesmo badge nos três READMEs; não conte funções manualmente. O badge de CI aponta para a **branch de desenvolvimento** enquanto a PR não for integrada; após merge autorizado, ajuste para `main`. Não há commits automáticos nem tokens especiais.
 
 ## GitHub Actions
 
@@ -234,7 +234,7 @@ Em uma eventual versão de produção: fila durável e reenvios, política de co
 
 ## Contribuições
 
-Issues e contribuições técnicas são bem-vindas. Utilize branch de trabalho e pull request; não inclua credenciais ou dados de clientes. A implementação atual está na [PR #1](https://github.com/RamonRDR/whatsapp-ai-agent/pull/1), aguardando autorização explícita para Codex Review e merge.
+Issues e contribuições técnicas são bem-vindas. Utilize branch de trabalho e pull request; não inclua credenciais ou dados de clientes. A implementação atual está na [PR #1](https://github.com/RamonRDR/whatsapp-ai-agent/pull/1), após a revisão inicial do Codex e as correções, aguardando nova revisão e autorização separada para merge.
 
 ## Licença
 
