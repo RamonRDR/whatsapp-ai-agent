@@ -81,6 +81,8 @@ Os dois pontos de entrada usam o mesmo motor. Transporte, banco, ferramentas, ap
 ```bash
 git clone https://github.com/RamonRDR/whatsapp-ai-agent.git
 cd whatsapp-ai-agent
+# Enquanto a PR #1 não for integrada, use a branch de desenvolvimento:
+git switch feat/whatsapp-ai-agent-foundation
 python -m venv .venv
 source .venv/bin/activate
 python -m pip install -e ".[dev]"
@@ -121,7 +123,7 @@ Com a aplicação local iniciada, abra **http://127.0.0.1:8000/demo** e **http:/
 services
 hours
 parking
-availability 2027-01-11
+availability YYYY-MM-DD
 book consultation AAAA-MM-DD 10:00
 CONFIRM
 NO
@@ -171,7 +173,7 @@ O contêiner executa sem privilégios de root, usa volume gravável SQLite e dis
 
 `GET /webhooks/whatsapp` verifica `hub.mode` e `hub.verify_token` antes de devolver `hub.challenge`. O `POST` verifica `X-Hub-Signature-256` por HMAC-SHA256 com comparação segura sobre **bytes originais**, depois trata eventos de mensagens e status. Para envio oficial de texto, o httpx utiliza `POST https://graph.facebook.com/{version}/{phone-number-id}/messages`.
 
-Envio real exige ativação explícita, credenciais, janela aplicável, consentimento e cumprimento da [documentação da Meta](https://developers.facebook.com/docs/whatsapp/cloud-api/). **Nenhum webhook real foi cadastrado nem houve validação na API Meta real.** Não há envio por templates aprovados, campanhas em massa ou automação extraoficial do WhatsApp Web.
+Envio real exige ativação explícita, credenciais, janela aplicável, consentimento e cumprimento da [documentação da Meta](https://whatsappbusiness.com/developers/developer-hub/). **Nenhum webhook real foi cadastrado nem houve validação na API Meta real.** Não há envio por templates aprovados, campanhas em massa ou automação extraoficial do WhatsApp Web.
 
 ## LLM e ferramentas (opcionais)
 

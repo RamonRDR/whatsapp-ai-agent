@@ -81,6 +81,8 @@ Both entry points share the conversation engine. Transport, database, business t
 ```bash
 git clone https://github.com/RamonRDR/whatsapp-ai-agent.git
 cd whatsapp-ai-agent
+# While PR #1 is unmerged, use the development branch:
+git switch feat/whatsapp-ai-agent-foundation
 python -m venv .venv
 source .venv/bin/activate
 python -m pip install -e ".[dev]"
@@ -121,7 +123,7 @@ Open **http://127.0.0.1:8000/demo** and **http://127.0.0.1:8000/docs** after sta
 services
 hours
 parking
-availability 2027-01-11
+availability YYYY-MM-DD
 book consultation YYYY-MM-DD 10:00
 CONFIRM
 NO
@@ -171,7 +173,7 @@ The container runs as a non-root user, stores SQLite in a writable named volume 
 
 `GET /webhooks/whatsapp` checks `hub.mode` and `hub.verify_token` before returning `hub.challenge`. `POST` verifies `X-Hub-Signature-256` via constant-time HMAC-SHA256 over the **unchanged request bytes**, then processes supported message and status events. Outbound text uses `POST https://graph.facebook.com/{version}/{phone-number-id}/messages` via httpx.
 
-Real sends require explicit enabling plus credentials, an eligible session window, user consent and compliance with current [Meta documentation](https://developers.facebook.com/docs/whatsapp/cloud-api/). **No real webhook has been registered and no live Meta API validation has been performed.** The sample does not implement approved template sending, mass marketing or unofficial WhatsApp Web automation.
+Real sends require explicit enabling plus credentials, an eligible session window, user consent and compliance with current [Meta documentation](https://whatsappbusiness.com/developers/developer-hub/). **No real webhook has been registered and no live Meta API validation has been performed.** The sample does not implement approved template sending, mass marketing or unofficial WhatsApp Web automation.
 
 ## LLM and tools (optional)
 
