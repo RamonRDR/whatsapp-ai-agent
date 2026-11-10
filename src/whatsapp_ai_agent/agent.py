@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from importlib.resources import files
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -153,6 +153,8 @@ class Agent:
             )
         )
         tools: list[dict] = []
+        llm_invoked = False
+        llm_tool_logs: list[tuple[str, str]] = []
         text = body.strip()
         lower = text.casefold()
         recent = (
@@ -167,13 +169,12 @@ class Agent:
         )
         reply: str | None
 
-        if is_stale:
-            reply = None
-        elif lower in {"stop", "unsubscribe", "opt out"}:
+        # A delayed STOP still withdraws consent: opt-out is monotonic.
+        if lower in {"stop", "unsubscribe", "opt out"}:
             contact.opted_out = True
             conv.state = "opted_out"
             reply = None
-        elif contact.opted_out:
+        elif is_stale or contact.opted_out:
             reply = None
         elif conv.state == "human":
             reply = None
@@ -246,12 +247,13 @@ class Agent:
             tools.append({"name": "get_availability", "result": result})
         elif self.settings.llm_provider == "openai-compatible":
             # The LLM can select read-only tools only. Its free-text claims are not trusted.
+            llm_invoked = True
             try:
                 history = session.scalars(
                     select(Message)
                     .where(Message.conversation_id == conv.id)
                     .order_by(Message.id.desc())
-                    .limit(8)
+                    .limit(7)
                 ).all()
                 messages = [
                     {
@@ -267,6 +269,10 @@ class Agent:
                         }
                         for m in reversed(history)
                     ],
+                    # The inbound Message is still pending (autoflush=False), so
+                    # include the current text explicitly without taking a write
+                    # lock while waiting for the provider.
+                    {"role": "user", "content": text[:1000]},
                 ]
                 result = await LLMAdapter(self.settings, llm_transport).decide(messages)
                 calls = result.get("tool_calls") or []
@@ -275,7 +281,7 @@ class Agent:
                     args = json.loads(call["function"]["arguments"])
                     output = self._tool(session, name, args)
                     tools.append({"name": name, "result": output})
-                    self._log_tool(session, conv, name, json.dumps(args)[:250])
+                    llm_tool_logs.append((name, json.dumps(args)[:250]))
                 reply = (
                     json.dumps(tools, ensure_ascii=False)[:1800]
                     if tools
@@ -304,6 +310,34 @@ class Agent:
                     "I can list services, opening hours, and help request a demo booking. "
                     "Type HUMAN if you would prefer an operator."
                 )
+
+        if llm_invoked:
+            # A concurrent STOP/HUMAN may commit while the LLM is awaited.
+            # This conditional UPDATE takes a write lock until our commit and
+            # checks fresh database state instead of cached ORM objects.
+            claimed = session.execute(
+                update(Conversation)
+                .where(
+                    Conversation.id == conv.id,
+                    Conversation.state == "automated",
+                    select(Contact.id)
+                    .where(
+                        Contact.id == conv.contact_id,
+                        Contact.opted_out.is_(False),
+                    )
+                    .exists(),
+                )
+                .values(state="automated")
+                .execution_options(synchronize_session=False)
+            ).rowcount
+            if claimed != 1:
+                reply = None
+                tools = []
+                session.expire(contact)
+                session.expire(conv)
+            else:
+                for name, detail in llm_tool_logs:
+                    self._log_tool(session, conv, name, detail)
 
         if reply:
             session.add(

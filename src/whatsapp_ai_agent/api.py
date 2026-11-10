@@ -11,7 +11,7 @@ from importlib.resources import files
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.responses import HTMLResponse, PlainTextResponse
 from pydantic import BaseModel, Field
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session
 
 from whatsapp_ai_agent.agent import Agent
@@ -126,6 +126,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             ToolExecution,
             HumanHandoff,
             Message,
+            AdminApproval,
+            AppointmentSlot,
             AppointmentRequest,
             Conversation,
             Contact,
@@ -341,8 +343,35 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         )
         if approval is None or not hmac.compare_digest(approval.token_digest, digest):
             raise HTTPException(status_code=403, detail="Invalid or expired cancellation approval")
-        approval.consumed = True
-        appointment.status = "cancelled"
+        # Claim the approval with an atomic, unexpired, unconsumed condition.
+        # Only one racing request may claim it and cancel the appointment.
+        claimed = session.execute(
+            update(AdminApproval)
+            .where(
+                AdminApproval.id == approval.id,
+                AdminApproval.appointment_id == appointment_id,
+                AdminApproval.token_digest == digest,
+                AdminApproval.consumed.is_(False),
+                AdminApproval.expires_at > utcnow(),
+            )
+            .values(consumed=True)
+            .execution_options(synchronize_session=False)
+        ).rowcount
+        if claimed != 1:
+            session.rollback()
+            raise HTTPException(status_code=403, detail="Approval already consumed or expired")
+        cancelled = session.execute(
+            update(AppointmentRequest)
+            .where(
+                AppointmentRequest.id == appointment_id,
+                AppointmentRequest.status == "confirmed",
+            )
+            .values(status="cancelled")
+            .execution_options(synchronize_session=False)
+        ).rowcount
+        if cancelled != 1:
+            session.rollback()
+            raise HTTPException(status_code=409, detail="Appointment already cancelled")
         session.execute(
             delete(AppointmentSlot).where(AppointmentSlot.appointment_id == appointment.id)
         )
