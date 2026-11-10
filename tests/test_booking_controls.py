@@ -108,6 +108,7 @@ def test_purge_history_requires_admin_and_respects_retention(client, settings):
     assert result["retention_days"] == 30
     assert client.get("/demo/history", params={"contact": "one"}).json()["messages"] == []
 
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("interruption", ["STOP", "HUMAN"])
 async def test_llm_reply_is_suppressed_after_interruption(client, settings, interruption):
